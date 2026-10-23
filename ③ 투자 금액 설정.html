@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가계 수지차표 및 생애주기 맞춤 자산 솔루션</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        
+        body { font-family: 'Pretendard', sans-serif; background-color: #f7f6f3; color: #37352f; font-size: 13.5px; }
+        .notion-card { background: #ffffff; border: 1px solid #e1dfdc; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+        
+        .notion-input { background: #fcfbf9; border: 1px solid #e1dfdc; border-radius: 4px; padding: 4px 8px; font-size: 13.5px; color: #37352f; text-align: right; font-weight: 600; width: 100%; height: 34px; transition: all 0.15s; }
+        .notion-input:focus { background: #ffffff; border-color: #2383e2; outline: none; box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.12); }
+        .select-box { background: #ffffff; border: 1px solid #e1dfdc; border-radius: 4px; padding: 4px 8px; font-size: 12px; font-weight: 600; color: #37352f; }
+        
+        table { border-collapse: collapse; width: 100%; font-size: 13px; table-layout: fixed; }
+        th { border: 1px solid #e9e9e8; padding: 0 8px; text-align: left; background: #f7f6f3; color: #5a5853; font-weight: 600; font-size: 12.5px; height: 40px; }
+        td { border: 1px solid #e9e9e8; padding: 0 8px; text-align: left; vertical-align: middle; height: 46px; box-sizing: border-box; }
+        
+        .border-use { border-left: 3px solid #d97706 !important; }
+        .border-risk { border-left: 3px solid #0284c7 !important; }
+
+        /* 금융·투자·노후 자산 통합 단일 네모 상자 스타일 */
+        .group-row-top { border-top: 2.5px solid #059669 !important; border-left: 2.5px solid #059669 !important; border-right: 2.5px solid #059669 !important; border-bottom: 1px dashed #a7f3d0 !important; background-color: #f0fdf4 !important; }
+        .group-row-mid { border-left: 2.5px solid #059669 !important; border-right: 2.5px solid #059669 !important; border-bottom: 1px dashed #a7f3d0 !important; background-color: #f0fdf4 !important; }
+        .group-row-bot { border-bottom: 2.5px solid #059669 !important; border-left: 2.5px solid #059669 !important; border-right: 2.5px solid #059669 !important; background-color: #f0fdf4 !important; }
+
+        .bg-subtotal { background-color: #faf9f6; font-weight: 700; color: #1e293b; }
+        .bg-balance { background-color: #2a2927; color: #ffffff; font-weight: 700; font-size: 13.5px; }
+        
+        .event-badge { background: #f2f1ed; border: 1px solid #e1dfdc; border-radius: 6px; padding: 5px 2px; text-align: center; font-size: 11px; font-weight: 600; color: #5a5853; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; opacity: 0.3; }
+        .event-badge.active { background: #37352f; color: #ffffff; border-color: #37352f; opacity: 1; }
+    </style>
+</head>
+<body class="py-8 px-3 md:px-6">
+
+    <div class="max-w-6xl mx-auto space-y-5">
+        
+        <!-- Header & 요청하신 3가지 전용 옵션바 구성 -->
+        <div class="notion-card p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold text-stone-900">가계 수지차표 및 생애주기 맞춤 자산 솔루션</h1>
+                <p class="text-xs text-stone-500 mt-1">제10회 경험생명표 정밀 기대수명 및 자산 포트폴리오 설계</p>
+            </div>
+
+            <!-- 우측 상단 옵션바: 가구형태 / 자녀유무 / 성별 -->
+            <div class="flex flex-wrap gap-2.5 items-center bg-[#f2f1ed] p-2.5 rounded-lg border border-[#e1dfdc] text-xs">
+                <div>
+                    <label class="block font-bold text-stone-600 mb-0.5 text-[10.5px]">가구 형태</label>
+                    <select id="optHousehold" class="select-box" onchange="calculateSheet()">
+                        <option value="single">미혼/1인 가구</option>
+                        <option value="single_inc">외벌이 가구</option>
+                        <option value="dual_inc" selected>맞벌이 가구</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-stone-600 mb-0.5 text-[10.5px]">자녀 유무</label>
+                    <select id="optChild" class="select-box" onchange="calculateSheet()">
+                        <option value="has_child" selected>자녀 있음</option>
+                        <option value="no_child">자녀 없음</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-stone-600 mb-0.5 text-[10.5px]">성별</label>
+                    <select id="optGender" class="select-box" onchange="calculateSheet()">
+                        <option value="male" selected>남</option>
+                        <option value="female">녀</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상단 그리드: [수입 내역] vs [생애주기 그래프 및 목돈 리스트] -->
+        <div class="grid lg:grid-cols-12 gap-5">
+            
+            <!-- 수입 내역 (5 컬럼) -->
+            <div class="lg:col-span-5 notion-card p-4 space-y-3 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-base font-extrabold text-stone-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-wallet text-stone-700"></i> [수입 내역] 연봉 및 사업소득 (세후 자동 환산)
+                    </h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>소득 구분</th>
+                                <th class="text-right w-24">본인 연간 (만)</th>
+                                <th class="text-right w-24">배우자 연간 (만)</th>
+                                <th class="text-right w-20">월 세후 환산</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>근로소득 (연봉)</td>
+                                <td><input type="number" id="salSelf" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td><input type="number" id="salSpouse" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="netSal" class="text-right font-bold text-stone-700">0</td>
+                            </tr>
+                            <tr>
+                                <td>사업소득 (매출)</td>
+                                <td><input type="number" id="bizSelf" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td><input type="number" id="bizSpouse" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="netBiz" class="text-right font-bold text-stone-700">0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bg-stone-100 p-2.5 rounded-lg flex justify-between items-center text-xs font-bold">
+                    <span class="text-stone-700">총 세후 월 실수령액 (A)</span>
+                    <span id="grandTotalIncome" class="text-stone-900 text-sm">0 만 원</span>
+                </div>
+            </div>
+
+            <!-- 생애주기 소득·지출 그래프 & 목돈 리스트 (7 컬럼) -->
+            <div class="lg:col-span-7 notion-card p-4 space-y-2.5">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h2 class="text-base font-extrabold text-stone-900 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-amber-700"></i> 소득·지출 곡선 및 정밀 경험생명표 분석
+                    </h2>
+                    <div class="flex items-center gap-1 bg-stone-100 px-2 py-1 rounded border border-[#e1dfdc] text-xs whitespace-nowrap">
+                        <span class="font-bold text-stone-600 text-[11px]">출생연도:</span>
+                        <input type="number" id="birthYearInput" value="1996" min="1930" max="2025" class="w-14 text-center text-xs font-bold notion-input py-0 h-6" oninput="calculateSheet()">
+                        <span class="font-bold text-stone-600 text-[11px]">년생(<span id="calcAgeSpan">31</span>세)</span>
+                    </div>
+                </div>
+
+                <!-- 생애 이벤트 아이콘 박스 8개 -->
+                <div class="grid grid-cols-8 gap-1 text-center">
+                    <div id="badge_marriage" class="event-badge"><i class="fa-solid fa-ring"></i>결혼(32)</div>
+                    <div id="badge_child" class="event-badge"><i class="fa-solid fa-baby"></i>육아(35)</div>
+                    <div id="badge_housing" class="event-badge"><i class="fa-solid fa-house"></i>주택(38)</div>
+                    <div id="badge_education" class="event-badge"><i class="fa-solid fa-graduation-cap"></i>교육(48)</div>
+                    <div id="badge_wedding" class="event-badge"><i class="fa-solid fa-champagne-glasses"></i>자녀결혼(58)</div>
+                    <div id="badge_retire" class="event-badge"><i class="fa-solid fa-umbrella-beach"></i>은퇴(65)</div>
+                    <div id="badge_care" class="event-badge"><i class="fa-solid fa-hospital"></i>간병(75)</div>
+                    <div id="badge_death" class="event-badge"><i class="fa-solid fa-hourglass-end"></i>기대여명</div>
+                </div>
+
+                <!-- SVG 소득·지출 곡선 시각화 그래프 -->
+                <div class="bg-[#fcfbf9] border rounded p-1.5 relative">
+                    <div class="flex justify-between text-[10px] text-stone-400 font-bold mb-0.5 px-1">
+                        <span>📈 소득 곡선 (청색)</span>
+                        <span id="simLifeExpectancyText" class="text-stone-800 font-bold">경험생명표 계산 중</span>
+                        <span>📉 지출 곡선 (주황)</span>
+                    </div>
+                    <svg viewBox="0 0 500 45" class="w-full h-9 overflow-visible">
+                        <line x1="0" y1="38" x2="500" y2="38" stroke="#e1dfdc" stroke-width="1" stroke-dasharray="3,3" />
+                        <path d="M 0 38 Q 150 5 250 10 T 500 42" fill="none" stroke="#2563eb" stroke-width="2" />
+                        <path d="M 0 34 Q 120 24 220 12 T 500 36" fill="none" stroke="#d97706" stroke-width="1.5" stroke-dasharray="3,3" />
+                        <g id="graphMarker" transform="translate(100, 18)">
+                            <circle cx="0" cy="0" r="4" fill="#37352f" stroke="#ffffff" stroke-width="1.5"/>
+                            <text x="0" y="-6" font-size="8" font-weight="bold" fill="#37352f" text-anchor="middle">현재</text>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- 향후 전체 필요 목돈 리스트 -->
+                <div class="bg-[#fcfbf9] p-2 rounded-lg border text-xs space-y-1 max-h-28 overflow-y-auto">
+                    <div class="text-[11px] font-bold text-stone-700 border-b pb-0.5">📋 현재 나이 이후 다가올 전체 필요 목돈 및 소요 기간 시뮬레이션</div>
+                    <div id="futureGoalsList" class="space-y-1 text-[11px]">
+                        <!-- 동적 생성 -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 메인 비교 수지차표 -->
+        <div class="grid lg:grid-cols-2 gap-5">
+
+            <!-- [좌측 표: 사용자 입력값] -->
+            <div class="notion-card p-4 space-y-3">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="text-base font-extrabold text-stone-900 uppercase tracking-wide bg-stone-100 px-3 py-1.5 rounded">
+                        &lt; 현재 지출 및 자산 현황 &gt;
+                    </h3>
+                    <span class="text-xs text-stone-500 font-medium">직접 입력 폼</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="w-24">카테고리</th>
+                                <th>세부 항목</th>
+                                <th class="text-right w-28">금액 (만)</th>
+                                <th class="text-right w-20">비율</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 사용자산 -->
+                            <tr class="border-use">
+                                <td rowspan="7" class="font-bold text-amber-900">사용자산<br><span class="text-[10px] font-normal text-amber-700">(소비·주거)</span></td>
+                                <td>주거비 (월세/원리금/이자)</td>
+                                <td><input type="number" id="u_housing" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_u_housing" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>생활비 / 식비 (생필품)</td>
+                                <td><input type="number" id="u_life" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_u_life" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>교통비 (대중교통/통행료)</td>
+                                <td><input type="number" id="u_transport" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_u_transport" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>차량유지비 (유류/정비)</td>
+                                <td><input type="number" id="u_car" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_u_car" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>통신비 (휴대폰/인터넷)</td>
+                                <td><input type="number" id="u_telecom" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_u_telecom" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>공과금 (수도/전기/가스)</td>
+                                <td><input type="number" id="u_utility" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_u_utility" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="bg-subtotal border-use">
+                                <td>사용자산 소계</td>
+                                <td id="tot_use" class="text-right text-amber-900 font-bold">0</td>
+                                <td id="rate_use" class="text-right text-amber-900 font-bold">0.0%</td>
+                            </tr>
+
+                            <!-- 금융·투자·노후 자산 통합 단일 네모 상자 -->
+                            <tr class="group-row-top">
+                                <td class="font-bold text-blue-900">금융자산</td>
+                                <td>CMA / 파킹통장 (비상금)</td>
+                                <td><input type="number" id="f_emergency" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_f_emergency" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+
+                            <tr class="group-row-mid">
+                                <td class="font-bold text-indigo-900">투자자산</td>
+                                <td>중장기 투자 (ISA 주식·ETF)</td>
+                                <td><input type="number" id="i_long" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_i_long" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+
+                            <tr class="group-row-bot">
+                                <td class="font-bold text-emerald-900">노후자금</td>
+                                <td>연금저축 (평생 소득)</td>
+                                <td><input type="number" id="e_pension" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_e_pension" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+
+                            <!-- Risk관리(보험료) 최하단 배치 -->
+                            <tr class="border-risk">
+                                <td class="font-bold text-sky-900">Risk관리</td>
+                                <td>보장성 보험료 (실비/진단)</td>
+                                <td><input type="number" id="r_insurance" placeholder="" class="notion-input" oninput="calculateSheet()"></td>
+                                <td id="r_r_insurance" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+
+                            <tr class="bg-balance">
+                                <td colspan="2">현재 잔여 수지차 (잉여금)</td>
+                                <td id="current_balance" class="text-right">0 만 원</td>
+                                <td id="rate_balance" class="text-right">0.0%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- [우측 표: 맞춤 전문가 권장 사항] -->
+            <div class="notion-card p-4 space-y-3 bg-[#fbfbfa]">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="text-base font-extrabold text-stone-900 uppercase tracking-wide bg-stone-200/80 px-3 py-1.5 rounded">
+                        &lt; 맞춤 전문가 권장 사항 &gt;
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <button onclick="alert('투자 절세 관련 시뮬레이션 페이지로 이동합니다.')" class="bg-indigo-600 text-white text-xs px-2.5 py-1 rounded-md font-bold hover:bg-indigo-700 transition">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> 투자 절세 페이지
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="w-24">카테고리</th>
+                                <th>권장 배치 가이드</th>
+                                <th class="text-right w-28">권장 금액 (만)</th>
+                                <th class="text-right w-20">권장 비중</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 사용자산 권장 -->
+                            <tr class="border-use">
+                                <td rowspan="7" class="font-bold text-amber-900">사용자산<br><span class="text-[10px] font-normal text-amber-700">고정비 최적화</span></td>
+                                <td>주거비 통제 가이드</td>
+                                <td id="rec_u_housing" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_r_u_housing" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>생활비/식비 다이어트 Target</td>
+                                <td id="rec_u_life" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_r_u_life" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>교통비 효율화 Target</td>
+                                <td id="rec_u_transport" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_r_u_transport" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>차량유지비 관리 Target</td>
+                                <td id="rec_u_car" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_r_u_car" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>통신비 절감 Target</td>
+                                <td id="rec_u_telecom" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_r_u_telecom" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="border-use">
+                                <td>공과금 효율 관리 Target</td>
+                                <td id="rec_u_utility" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_r_u_utility" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+                            <tr class="bg-subtotal border-use">
+                                <td>권장 사용자산 소계</td>
+                                <td id="rec_tot_use" class="text-right text-amber-900 font-bold">0</td>
+                                <td id="rec_rate_use" class="text-right text-amber-900 font-bold">0.0%</td>
+                            </tr>
+
+                            <!-- 우측 통합 자산 네모 상자 -->
+                            <tr class="group-row-top">
+                                <td class="font-bold text-blue-900">금융자산</td>
+                                <td>CMA / 파킹통장 (월 지출 3개월분)</td>
+                                <td id="rec_f_emergency" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_rate_fin" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+
+                            <tr class="group-row-mid">
+                                <td class="font-bold text-indigo-900">투자자산</td>
+                                <td>ISA 주식·ETF (연복리 목표)</td>
+                                <td id="rec_i_long" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_rate_inv" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+
+                            <tr class="group-row-bot">
+                                <td class="font-bold text-emerald-900">노후자금</td>
+                                <td>연금저축 (소득대체율 60% 목표)</td>
+                                <td id="rec_e_pension" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_rate_ret" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+
+                            <!-- 우측 Risk관리 최하단 -->
+                            <tr class="border-risk">
+                                <td class="font-bold text-sky-900">Risk관리</td>
+                                <td>보장성 보험 (소득의 7~10% 수준)</td>
+                                <td id="rec_r_insurance" class="text-right font-bold text-stone-800">0</td>
+                                <td id="rec_rate_risk" class="text-right text-stone-500">0.0%</td>
+                            </tr>
+
+                            <tr class="bg-balance">
+                                <td colspan="2">권장 잔여 수지차 (누수 없는 0원 설계)</td>
+                                <td id="rec_balance" class="text-right">0 만 원</td>
+                                <td id="rec_rate_balance" class="text-right">0.0%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let currentRecommendedInvestment = 0;
+
+        function getEmpiricalLifeExpectancy(age, gender = 'male') {
+            let ex = 0;
+            if (gender === 'male') {
+                if (age <= 10) ex = 91.5;
+                else if (age <= 20) ex = 81.2;
+                else if (age <= 30) ex = 71.4;
+                else if (age <= 40) ex = 61.5;
+                else if (age <= 50) ex = 51.6;
+                else if (age <= 60) ex = 41.8;
+                else if (age <= 70) ex = 32.1;
+                else if (age <= 80) ex = 21.4;
+                else ex = 8.2;
+            } else {
+                if (age <= 10) ex = 96.2;
+                else if (age <= 20) ex = 86.0;
+                else if (age <= 30) ex = 76.1;
+                else if (age <= 40) ex = 66.2;
+                else if (age <= 50) ex = 56.3;
+                else if (age <= 60) ex = 46.4;
+                else if (age <= 70) ex = 36.6;
+                else if (age <= 80) ex = 24.1;
+                else ex = 8.8;
+            }
+            return { ex: ex.toFixed(1), total: (age + ex).toFixed(1) };
+        }
+
+        function calcNetSalary(annualSal) {
+            if(!annualSal || annualSal <= 0) return 0;
+            let taxRate = 0.04;
+            if(annualSal > 3000) taxRate = 0.06;
+            if(annualSal > 5000) taxRate = 0.09;
+            if(annualSal > 8000) taxRate = 0.14;
+            return Math.round((annualSal * (1 - taxRate)) / 12);
+        }
+
+        function calcNetBiz(annualBiz) {
+            if(!annualBiz || annualBiz <= 0) return 0;
+            return Math.round((annualBiz * 0.967) / 12);
+        }
+
+        function calculateSheet() {
+            const birthYear = parseInt(document.getElementById('birthYearInput').value) || 1996;
+            const currentYear = 2026;
+            const age = Math.max(1, currentYear - birthYear + 1);
+            document.getElementById('calcAgeSpan').innerText = age;
+
+            const salSelf = parseFloat(document.getElementById('salSelf').value) || 0;
+            const salSpouse = parseFloat(document.getElementById('salSpouse').value) || 0;
+            const bizSelf = parseFloat(document.getElementById('bizSelf').value) || 0;
+            const bizSpouse = parseFloat(document.getElementById('bizSpouse').value) || 0;
+
+            const totalInc = calcNetSalary(salSelf) + calcNetSalary(salSpouse) + calcNetBiz(bizSelf) + calcNetBiz(bizSpouse);
+
+            document.getElementById('netSal').innerText = (calcNetSalary(salSelf) + calcNetSalary(salSpouse)).toLocaleString();
+            document.getElementById('netBiz').innerText = (calcNetBiz(bizSelf) + calcNetBiz(bizSpouse)).toLocaleString();
+            document.getElementById('grandTotalIncome').innerText = totalInc.toLocaleString() + " 만 원";
+
+            const uH = parseFloat(document.getElementById('u_housing').value) || 0;
+            const uL = parseFloat(document.getElementById('u_life').value) || 0;
+            const uT = parseFloat(document.getElementById('u_transport').value) || 0;
+            const uC = parseFloat(document.getElementById('u_car').value) || 0;
+            const uTel = parseFloat(document.getElementById('u_telecom').value) || 0;
+            const uU = parseFloat(document.getElementById('u_utility').value) || 0;
+            const totUse = uH + uL + uT + uC + uTel + uU;
+
+            const fEm = parseFloat(document.getElementById('f_emergency').value) || 0;
+            const iLo = parseFloat(document.getElementById('i_long').value) || 0;
+            const ePen = parseFloat(document.getElementById('e_pension').value) || 0;
+            const rIns = parseFloat(document.getElementById('r_insurance').value) || 0;
+
+            const currentSum = totUse + fEm + iLo + ePen + rIns;
+            const currentBal = totalInc - currentSum;
+
+            document.getElementById('tot_use').innerText = totUse.toLocaleString();
+            document.getElementById('rate_use').innerText = totalInc > 0 ? ((totUse/totalInc)*100).toFixed(1) + "%" : "0.0%";
+            document.getElementById('current_balance').innerText = currentBal.toLocaleString() + " 만 원";
+            document.getElementById('rate_balance').innerText = totalInc > 0 ? ((currentBal/totalInc)*100).toFixed(1) + "%" : "0.0%";
+
+            if(totalInc > 0) {
+                document.getElementById('r_u_housing').innerText = ((uH/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('r_u_life').innerText = ((uL/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('r_u_transport').innerText = ((uT/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('r_u_car').innerText = ((uC/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('r_u_telecom').innerText = ((uTel/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('r_u_utility').innerText = ((uU/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('r_f_emergency').innerText = ((fEm/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('r_i_long').innerText = ((iLo/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('r_e_pension').innerText = ((ePen/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('r_r_insurance').innerText = ((rIns/totalInc)*100).toFixed(1) + "%";
+            }
+
+            // 상단 3개 옵션 연동 권장 비율 로직
+            const household = document.getElementById('optHousehold').value;
+            const child = document.getElementById('optChild').value;
+
+            let recUseRatio = 0.44;
+            if (household === 'single') recUseRatio = 0.40;
+            else if (household === 'single_inc') recUseRatio = 0.56;
+            else if (household === 'dual_inc') recUseRatio = 0.44;
+
+            if (household !== 'single' && child === 'has_child') {
+                recUseRatio += 0.04;
+            }
+
+            const recTotUse = Math.round(totalInc * recUseRatio);
+            const recTotFin = Math.round(totalInc * 0.06);
+            const recTotRet = Math.round(totalInc * 0.10);
+            const recTotRisk = Math.round(totalInc * 0.08);
+            const recTotInv = Math.max(0, totalInc - (recTotUse + recTotFin + recTotRet + recTotRisk));
+
+            currentRecommendedInvestment = recTotInv;
+
+            const r_uH = Math.round(recTotUse * 0.43);
+            const r_uL = Math.round(recTotUse * 0.30);
+            const r_uT = Math.round(recTotUse * 0.06);
+            const r_uC = Math.round(recTotUse * 0.10);
+            const r_uTel = Math.round(recTotUse * 0.06);
+            const r_uU = recTotUse - (r_uH + r_uL + r_uT + r_uC + r_uTel);
+
+            document.getElementById('rec_u_housing').innerText = r_uH;
+            document.getElementById('rec_u_life').innerText = r_uL;
+            document.getElementById('rec_u_transport').innerText = r_uT;
+            document.getElementById('rec_u_car').innerText = r_uC;
+            document.getElementById('rec_u_telecom').innerText = r_uTel;
+            document.getElementById('rec_u_utility').innerText = r_uU;
+            document.getElementById('rec_tot_use').innerText = recTotUse;
+            document.getElementById('rec_rate_use').innerText = totalInc > 0 ? (recUseRatio * 100).toFixed(1) + "%" : "0.0%";
+
+            if(totalInc > 0) {
+                document.getElementById('rec_r_u_housing').innerText = ((r_uH/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('rec_r_u_life').innerText = ((r_uL/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('rec_r_u_transport').innerText = ((r_uT/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('rec_r_u_car').innerText = ((r_uC/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('rec_r_u_telecom').innerText = ((r_uTel/totalInc)*100).toFixed(1) + "%";
+                document.getElementById('rec_r_u_utility').innerText = ((r_uU/totalInc)*100).toFixed(1) + "%";
+            }
+
+            document.getElementById('rec_f_emergency').innerText = recTotFin;
+            document.getElementById('rec_rate_fin').innerText = totalInc > 0 ? "6.0%" : "0.0%";
+
+            document.getElementById('rec_i_long').innerText = recTotInv;
+            document.getElementById('rec_rate_inv').innerText = totalInc > 0 ? ((recTotInv/totalInc)*100).toFixed(1) + "%" : "0.0%";
+
+            document.getElementById('rec_e_pension').innerText = recTotRet;
+            document.getElementById('rec_rate_ret').innerText = totalInc > 0 ? "10.0%" : "0.0%";
+
+            document.getElementById('rec_r_insurance').innerText = recTotRisk;
+            document.getElementById('rec_rate_risk').innerText = totalInc > 0 ? "8.0%" : "0.0%";
+
+            document.getElementById('rec_balance').innerText = "0 만 원";
+            document.getElementById('rec_rate_balance').innerText = "0.0%";
+
+            updateLifeCycle(totalInc, age);
+        }
+
+        function updateLifeCycle(totalInc, age) {
+            const gender = document.getElementById('optGender').value;
+            const lifeInfo = getEmpiricalLifeExpectancy(age, gender);
+            document.getElementById('simLifeExpectancyText').innerText = `제10회 경험생명표 기대수명: 약 ${lifeInfo.total}세 (잔여 ${lifeInfo.ex}년)`;
+
+            const markerX = Math.max(10, Math.min(490, ((age - 5) / 90) * 480 + 10));
+            const markerY = 22 + Math.sin((age - 5) / 90 * Math.PI) * (-12);
+            document.getElementById('graphMarker').setAttribute('transform', `translate(${markerX}, ${markerY})`);
+
+            const allEvents = [
+                { id: 'badge_marriage', ageLimit: 32, name: "결혼 자금", cost: 6000 },
+                { id: 'badge_child', ageLimit: 35, name: "육아 및 출산 자금", cost: 3000 },
+                { id: 'badge_housing', ageLimit: 38, name: "주택 구입 실수요 자금", cost: 15000 },
+                { id: 'badge_education', ageLimit: 48, name: "자녀 고등·대학 교육비", cost: 10000 },
+                { id: 'badge_wedding', ageLimit: 58, name: "자녀 결혼 지원 자금", cost: 8000 },
+                { id: 'badge_retire', ageLimit: 65, name: "은퇴 노후 자산", cost: 20000 },
+                { id: 'badge_care', ageLimit: 75, name: "고령기 의료·간병 자금", cost: 5000 },
+                { id: 'badge_death', ageLimit: Math.round(lifeInfo.total), name: "상속 및 사후 정리 자금", cost: 3000 }
+            ];
+
+            allEvents.forEach(ev => {
+                const el = document.getElementById(ev.id);
+                if(el) {
+                    if(ev.ageLimit >= age || ev.id === 'badge_death') {
+                        el.classList.add('active');
+                    } else {
+                        el.classList.remove('active');
+                    }
+                }
+            });
+
+            const listEl = document.getElementById('futureGoalsList');
+            listEl.innerHTML = "";
+
+            const pmt = currentRecommendedInvestment > 0 ? currentRecommendedInvestment : Math.round(totalInc * 0.2);
+
+            let futureCount = 0;
+            allEvents.forEach(ev => {
+                if(ev.ageLimit >= age) {
+                    futureCount++;
+                    const yrsSavings = pmt > 0 ? calcYears(ev.cost, pmt, 0.03) : "-";
+                    const yrs10 = pmt > 0 ? calcYears(ev.cost, pmt, 0.10) : "-";
+                    const yrs15 = pmt > 0 ? calcYears(ev.cost, pmt, 0.15) : "-";
+
+                    const itemHtml = `
+                        <div class="flex justify-between items-center bg-white p-1 rounded border">
+                            <div>
+                                <span class="font-bold text-stone-800">[${ev.ageLimit}세] ${ev.name}</span>
+                                <span class="text-amber-800 font-extrabold ml-1 font-mono">(${ev.cost >= 10000 ? (ev.cost/10000).toFixed(1) + '억' : ev.cost + '만'})</span>
+                            </div>
+                            <div class="text-[10.5px] text-stone-500 font-medium">
+                                예적금(3%): <b class="text-stone-700">${yrsSavings}년</b> | 복리10%: <b class="text-indigo-600">${yrs10}년</b> | 복리15%: <b class="text-indigo-800">${yrs15}년</b>
+                            </div>
+                        </div>
+                    `;
+                    listEl.innerHTML += itemHtml;
+                }
+            });
+
+            if(futureCount === 0) {
+                listEl.innerHTML = "<div class='text-stone-400'>설정 나이가 기대수명을 초과하였습니다.</div>";
+            }
+        }
+
+        function calcYears(fv, pmt, annualRate) {
+            const rm = annualRate / 12;
+            const ratio = (fv * rm) / pmt + 1;
+            if(ratio <= 1) return 0.5;
+            const totalMonths = Math.log(ratio) / Math.log(1 + rm);
+            return (totalMonths / 12).toFixed(1);
+        }
+
+        window.onload = function() {
+            calculateSheet();
+        };
+    </script>
+</body>
+</html>
